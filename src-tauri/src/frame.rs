@@ -62,7 +62,7 @@ pub fn allow_server<R: Runtime>(app: &AppHandle<R>, server: &Url) {
 
 /// Rejects calls from a page that is neither one of the app's own pages nor on
 /// the configured server.
-fn check_caller<R: Runtime>(window: &WebviewWindow<R>) -> Result<(), String> {
+pub(crate) fn check_caller<R: Runtime>(window: &WebviewWindow<R>) -> Result<(), String> {
     let page = window.url().map_err(|e| e.to_string())?;
     let server = window
         .state::<AppState>()

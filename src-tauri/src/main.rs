@@ -2,6 +2,7 @@
 
 mod config;
 mod frame;
+mod popout;
 mod snap;
 mod state;
 mod urls;
@@ -107,6 +108,7 @@ fn main() {
             frame::frame_close,
             frame::frame_state,
             frame::frame_snap_rect,
+            popout::popout_frame,
         ])
         .setup(|app| {
             let path = app.path().app_config_dir()?.join("config.json");

@@ -12,4 +12,5 @@ permissions = [
   "allow-frame-close",
   "allow-frame-state",
   "allow-frame-snap-rect",
+  "allow-popout-frame",
 ]

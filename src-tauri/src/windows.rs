@@ -3,15 +3,16 @@
 //! native ones.
 
 use tauri::{
-    webview::NewWindowResponse, AppHandle, Manager, PhysicalPosition, Runtime, WebviewUrl,
-    WebviewWindow, WebviewWindowBuilder, WindowEvent,
+    webview::{NewWindowFeatures, NewWindowResponse},
+    AppHandle, Manager, PhysicalPosition, Runtime, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
+    WindowEvent,
 };
 use tauri_plugin_opener::OpenerExt;
 use url::Url;
 
 use crate::{
     config::{is_on_screen, next_window_id, workspace_for, Geometry, Rect, MAIN_WINDOW_ID},
-    frame,
+    frame, popout,
     state::AppState,
     urls::{classify_new_window, launcher_path, normalize_server_url, window_url, NewWindowTarget},
 };
@@ -27,7 +28,7 @@ const DEFAULT_SIZE: (f64, f64) = (1200.0, 800.0);
 /// Every other key is left alone and reaches the page.
 const SHORTCUT_SCRIPT: &str = r#"
 (() => {
-  if (window.top !== window) return;
+  if (window.top !== window || window.opener) return;
   // The app's own pages (the connect page) have no Obsidian to open windows in.
   if (location.protocol === 'tauri:' || location.hostname === 'tauri.localhost') return;
   window.addEventListener('keydown', (event) => {
@@ -83,7 +84,7 @@ fn server_url(app: &AppHandle<impl Runtime>) -> Option<Url> {
 fn vault_windows<R: Runtime>(app: &AppHandle<R>) -> Vec<WebviewWindow<R>> {
     app.webview_windows()
         .into_iter()
-        .filter(|(label, _)| label != SETUP_LABEL)
+        .filter(|(label, _)| label != SETUP_LABEL && !popout::is_popout_label(label))
         .map(|(_, window)| window)
         .collect()
 }
@@ -141,6 +142,7 @@ pub fn open_window<R: Runtime>(
     eprintln!("ignis-desktop: opening window {id}: {url}");
 
     let handle = app.clone();
+    let label = id.to_owned();
     // The window starts on a local page that opens the server once it answers,
     // so a server that is down still leaves a window with working controls.
     let mut builder =
@@ -153,16 +155,18 @@ pub fn open_window<R: Runtime>(
             // would swallow those events on Windows.
             .disable_drag_drop_handler()
             .initialization_script(SHORTCUT_SCRIPT)
+            .initialization_script(popout::SCRIPT)
             .on_document_title_changed(|window, title| {
                 let _ = window.set_title(&title);
             })
-            .on_new_window(move |requested, _features| {
-                handle_new_window_request(&handle, requested);
-                NewWindowResponse::Deny
+            .on_new_window(move |requested, features| {
+                handle_new_window_request(&handle, &label, requested, features)
             });
 
     if !system_title_bar {
-        builder = builder.initialization_script(frame::script());
+        builder = builder
+            .initialization_script(frame::script())
+            .initialization_script(popout::frame_source_script());
     }
 
     match saved {
@@ -201,15 +205,26 @@ pub fn open_new_window<R: Runtime>(app: &AppHandle<R>, mut options: OpenOptions)
     }
 }
 
-/// Reacts to `window.open` / `target=_blank` from the page. Runs on the UI
-/// thread, so the real work is moved to another thread: creating windows from
-/// within a UI-thread callback can deadlock on Windows.
-fn handle_new_window_request<R: Runtime>(app: &AppHandle<R>, requested: Url) {
+/// Reacts to `window.open` / `target=_blank` from the page of the window
+/// `opener`. Runs on the UI thread. A pop-out has to be created right here
+/// because the page is waiting for its `window`; everything else is moved to
+/// another thread, since creating windows from within a UI-thread callback can
+/// deadlock on Windows.
+pub fn handle_new_window_request<R: Runtime>(
+    app: &AppHandle<R>,
+    opener: &str,
+    requested: Url,
+    features: NewWindowFeatures,
+) -> NewWindowResponse<R> {
     let Some(server) = server_url(app) else {
-        return;
+        return NewWindowResponse::Deny;
     };
+    let target = classify_new_window(&server, &requested);
+    if target == NewWindowTarget::Popout {
+        return popout::create_window(app, opener, features);
+    }
     let app = app.clone();
-    std::thread::spawn(move || match classify_new_window(&server, &requested) {
+    std::thread::spawn(move || match target {
         NewWindowTarget::Native { vault, file } => {
             open_new_window(
                 &app,
@@ -225,8 +240,9 @@ fn handle_new_window_request<R: Runtime>(app: &AppHandle<R>, requested: Url) {
                 eprintln!("ignis-desktop: could not open {url} in the browser: {e}");
             }
         }
-        NewWindowTarget::Ignore => {}
+        NewWindowTarget::Popout | NewWindowTarget::Ignore => {}
     });
+    NewWindowResponse::Deny
 }
 
 /// Opens the windows from the last session, or the main window if there were
@@ -384,6 +400,7 @@ fn track_window<R: Runtime>(app: &AppHandle<R>, window: &WebviewWindow<R>) {
                     state.config().remove_window(&label);
                 }
                 state.flush();
+                popout::close_owned(&handle, &label);
             }
             _ => {}
         }
@@ -393,7 +410,7 @@ fn track_window<R: Runtime>(app: &AppHandle<R>, window: &WebviewWindow<R>) {
 /// WebView2 handles Ctrl+F, Ctrl+R, F5, Ctrl+P, Ctrl+U, F12 and friends
 /// itself. Turning that off makes the page receive all of them.
 #[cfg(windows)]
-fn disable_browser_accelerator_keys<R: Runtime>(window: &WebviewWindow<R>) {
+pub fn disable_browser_accelerator_keys<R: Runtime>(window: &WebviewWindow<R>) {
     use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Settings3;
     use windows_core::Interface;
 
@@ -417,4 +434,4 @@ fn disable_browser_accelerator_keys<R: Runtime>(window: &WebviewWindow<R>) {
 }
 
 #[cfg(not(windows))]
-fn disable_browser_accelerator_keys<R: Runtime>(_window: &WebviewWindow<R>) {}
+pub fn disable_browser_accelerator_keys<R: Runtime>(_window: &WebviewWindow<R>) {}

@@ -21,7 +21,10 @@
   const STYLE_ID = 'ignis-frame-style';
   const STRIP_ID = 'ignis-frame-strip';
 
-  const HEADER = '.workspace-tabs.mod-top .workspace-tab-header-container';
+  // The second selector is the tab header of a pop-out window, which does not
+  // get `mod-top`.
+  const HEADER =
+    '.workspace-tabs.mod-top .workspace-tab-header-container, .workspace-window .workspace-tabs .workspace-tab-header-container';
   const BUTTON_HOST = '.titlebar-button-container.mod-right';
   // Parts of the tab header that do something on their own.
   const INTERACTIVE = [
@@ -86,7 +89,10 @@
     close: 'frame_close',
   };
 
+  // A pop-out document has no IPC of its own; the main page hands it a
+  // transport that forwards to the main window's commands (see popout.js).
   const invoke = (command, args) => {
+    if (window.__ignisFrameInvoke) return Promise.resolve(window.__ignisFrameInvoke(command, args));
     const internals = window.__TAURI_INTERNALS__;
     if (!internals) return Promise.resolve(undefined);
     return Promise.resolve(internals.invoke(command, args)).catch((error) => {
@@ -209,6 +215,8 @@
   window.addEventListener(
     'mousedown',
     (event) => {
+      // Obsidian copies mouse events from a pop-out onto the main window.
+      if (event.isRelayed) return;
       if (event.button !== 0 || !(event.target instanceof Element)) return;
       if (event.target.closest(INTERACTIVE) || !event.target.closest(DRAG_AREA)) return;
       event.preventDefault();
