@@ -12,9 +12,9 @@ use url::Url;
 
 use crate::{
     config::{is_on_screen, next_window_id, workspace_for, Geometry, Rect, MAIN_WINDOW_ID},
-    popout,
+    frame, popout,
     state::AppState,
-    urls::{classify_new_window, normalize_server_url, window_url, NewWindowTarget},
+    urls::{classify_new_window, launcher_path, normalize_server_url, window_url, NewWindowTarget},
 };
 
 /// Label of the local window that asks for the server address.
@@ -29,6 +29,8 @@ const DEFAULT_SIZE: (f64, f64) = (1200.0, 800.0);
 const SHORTCUT_SCRIPT: &str = r#"
 (() => {
   if (window.top !== window || window.opener) return;
+  // The app's own pages (the connect page) have no Obsidian to open windows in.
+  if (location.protocol === 'tauri:' || location.hostname === 'tauri.localhost') return;
   window.addEventListener('keydown', (event) => {
     const isN = event.code === 'KeyN' || event.key === 'n' || event.key === 'N';
     if (event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey && isN) {
@@ -117,13 +119,15 @@ pub fn open_window<R: Runtime>(
         return Ok(());
     }
     let server = server_url(app).ok_or("No server address is configured.")?;
+    frame::allow_server(app, &server);
     let state = app.state::<AppState>();
-    let (vault, saved) = {
+    let (vault, saved, system_title_bar) = {
         let mut config = state.config();
         config.ensure_window(id);
         (
             config.vault.clone(),
             config.geometry_of(id).or(options.geometry),
+            config.system_title_bar,
         )
     };
     let vault = options.vault.or(vault);
@@ -139,21 +143,31 @@ pub fn open_window<R: Runtime>(
 
     let handle = app.clone();
     let label = id.to_owned();
-    let mut builder = WebviewWindowBuilder::new(app, id, WebviewUrl::External(url))
-        .title("Ignis")
-        .inner_size(DEFAULT_SIZE.0, DEFAULT_SIZE.1)
-        .min_inner_size(420.0, 320.0)
-        // Ignis uploads files by drag and drop; Tauri's own file-drop handler
-        // would swallow those events on Windows.
-        .disable_drag_drop_handler()
-        .initialization_script(SHORTCUT_SCRIPT)
-        .initialization_script(popout::SCRIPT)
-        .on_document_title_changed(|window, title| {
-            let _ = window.set_title(&title);
-        })
-        .on_new_window(move |requested, features| {
-            handle_new_window_request(&handle, &label, requested, features)
-        });
+    // The window starts on a local page that opens the server once it answers,
+    // so a server that is down still leaves a window with working controls.
+    let mut builder =
+        WebviewWindowBuilder::new(app, id, WebviewUrl::App(launcher_path(&url).into()))
+            .decorations(system_title_bar)
+            .title("Ignis")
+            .inner_size(DEFAULT_SIZE.0, DEFAULT_SIZE.1)
+            .min_inner_size(420.0, 320.0)
+            // Ignis uploads files by drag and drop; Tauri's own file-drop handler
+            // would swallow those events on Windows.
+            .disable_drag_drop_handler()
+            .initialization_script(SHORTCUT_SCRIPT)
+            .initialization_script(popout::SCRIPT)
+            .on_document_title_changed(|window, title| {
+                let _ = window.set_title(&title);
+            })
+            .on_new_window(move |requested, features| {
+                handle_new_window_request(&handle, &label, requested, features)
+            });
+
+    if !system_title_bar {
+        builder = builder
+            .initialization_script(frame::script())
+            .initialization_script(popout::frame_source_script());
+    }
 
     match saved {
         Some(g) if is_on_screen(&g, &monitor_rects(app)) => {
@@ -280,19 +294,29 @@ pub fn apply_settings<R: Runtime>(
         config.vault = (!vault.is_empty()).then(|| vault.to_owned());
     }
     state.flush();
+    frame::allow_server(app, &server);
 
     let open = vault_windows(app);
     if open.is_empty() {
         restore_windows(app);
     } else {
         let vault = state.config().vault.clone();
+        // The settings window is an app page, so its URL says how app pages
+        // are addressed on this platform.
+        let app_base = app
+            .get_webview_window(SETUP_LABEL)
+            .and_then(|setup| setup.url().ok());
         for window in open {
-            let url = window_url(
+            let target = window_url(
                 &server,
                 vault.as_deref(),
                 workspace_for(window.label()),
                 None,
             );
+            let url = app_base
+                .as_ref()
+                .and_then(|base| base.join(&launcher_path(&target)).ok())
+                .unwrap_or(target);
             window.navigate(url).map_err(|e| e.to_string())?;
         }
     }

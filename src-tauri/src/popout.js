@@ -64,6 +64,34 @@
   // Obsidian adds `background=<color>` for Electron. Chromium reads the same
   // key as "open in the background" and then returns null instead of the
   // window, so it is removed here and applied to the document instead.
+  // In a frameless window the pop-out has no title bar either. Run the same
+  // frame script in the pop-out's document, with a transport that goes through
+  // this (main) page, because the pop-out itself cannot call app commands.
+  function drawFrame(popup) {
+    if (!window.__ignisFrameSource || !window.__TAURI_INTERNALS__) return;
+    popup.__ignisFrameInvoke = (command, args) => {
+      if (command === 'frame_snap_rect') return undefined;
+      const action = command.replace(/^frame_/, '').replace(/_/g, '-');
+      return window.__TAURI_INTERNALS__.invoke('popout_frame', { action });
+    };
+    popup.eval(window.__ignisFrameSource);
+    // Empty space in the tab header moves the pop-out; a double click
+    // maximizes or restores it.
+    const interactive =
+      '.workspace-tab-header, .workspace-tab-header-new-tab, .workspace-tab-header-tab-list, .titlebar-button, .ignis-frame-button, button, a, input, select, textarea';
+    popup.addEventListener(
+      'mousedown',
+      (event) => {
+        const target = event.target;
+        if (event.button !== 0 || !target || !target.closest) return;
+        if (target.closest(interactive) || !target.closest('.workspace-tab-header-container, .titlebar')) return;
+        event.preventDefault();
+        popup.__ignisFrameInvoke(event.detail === 2 ? 'frame_toggle_maximize' : 'frame_start_dragging');
+      },
+      true,
+    );
+  }
+
   function popupOpen(url, target, features) {
     let background;
     const withoutBackground = String(features || '')
@@ -78,6 +106,7 @@
     const popup = nativeOpen.call(window, url, target, withoutBackground);
     if (!popup) return popup;
     preparePopup(popup);
+    drawFrame(popup);
     if (background) popup.document.documentElement.style.background = background;
     return popup;
   }

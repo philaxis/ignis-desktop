@@ -29,7 +29,10 @@ use tauri::{
 };
 use url::Url;
 
-use crate::windows::{disable_browser_accelerator_keys, handle_new_window_request};
+use crate::{
+    state::AppState,
+    windows::{disable_browser_accelerator_keys, handle_new_window_request},
+};
 
 /// The page-side script that re-enables Obsidian's pop-outs.
 pub const SCRIPT: &str = include_str!("popout.js");
@@ -56,12 +59,73 @@ fn owner_of(label: &str) -> &str {
     label.split(LABEL_INFIX).next().unwrap_or(label)
 }
 
-/// The one place where the look of a pop-out window is decided. Windows keep
-/// the native title bar for now.
+/// The one place where the look of a pop-out window is decided: like the
+/// windows themselves, a pop-out has no native title bar unless *Use system
+/// title bar* is on. Without one, the main page draws the controls into the
+/// pop-out's document (see `popout.js` and `frame.js`).
 fn frame_builder<'a, R: Runtime, M: Manager<R>>(
     builder: WebviewWindowBuilder<'a, R, M>,
+    system_title_bar: bool,
 ) -> WebviewWindowBuilder<'a, R, M> {
-    builder.decorations(true)
+    builder.decorations(system_title_bar)
+}
+
+/// Hands `frame.js` to the page as a string, so that it can run it inside the
+/// pop-out documents it creates. Added to frameless windows only.
+pub fn frame_source_script() -> String {
+    format!(
+        "window.__ignisFrameSource = {};",
+        serde_json::Value::String(crate::frame::script().to_owned())
+    )
+}
+
+/// Window controls for a pop-out. A pop-out's document is `about:blank`, so it
+/// cannot call the frame commands itself; the main page calls this one and
+/// names the action. The pop-out is the focused one of the caller's pop-outs
+/// (a press on its frame focuses it first), or the only one.
+#[tauri::command]
+pub fn popout_frame<R: Runtime>(
+    window: WebviewWindow<R>,
+    action: String,
+) -> Result<serde_json::Value, String> {
+    crate::frame::check_caller(&window)?;
+    let prefix = format!("{}{LABEL_INFIX}", window.label());
+    let owned: Vec<WebviewWindow<R>> = window
+        .app_handle()
+        .webview_windows()
+        .into_iter()
+        .filter(|(label, _)| label.starts_with(&prefix))
+        .map(|(_, w)| w)
+        .collect();
+    let target = owned
+        .iter()
+        .find(|w| w.is_focused().unwrap_or(false))
+        .or(if owned.len() == 1 {
+            owned.first()
+        } else {
+            None
+        })
+        .ok_or("No pop-out window is focused.")?;
+    let result = match action.as_str() {
+        "start-dragging" => target.start_dragging(),
+        "minimize" => target.minimize(),
+        "toggle-maximize" => {
+            if target.is_maximized().map_err(|e| e.to_string())? {
+                target.unmaximize()
+            } else {
+                target.maximize()
+            }
+        }
+        // Goes through `CloseRequested`, which asks the page to close itself.
+        "close" => target.close(),
+        "state" => {
+            let maximized = target.is_maximized().map_err(|e| e.to_string())?;
+            return Ok(serde_json::json!({ "maximized": maximized }));
+        }
+        other => return Err(format!("Unknown pop-out action: {other}")),
+    };
+    result.map_err(|e| e.to_string())?;
+    Ok(serde_json::Value::Null)
 }
 
 /// Creates the window for a pop-out request from `opener` and hands it back
@@ -78,6 +142,7 @@ pub fn create_window<R: Runtime>(
         NEXT_POPOUT.fetch_add(1, Ordering::Relaxed)
     );
     let (size, position) = (features.size(), features.position());
+    let system_title_bar = app.state::<AppState>().config().system_title_bar;
     let handle = app.clone();
     let opener_label = label.clone();
 
@@ -104,7 +169,7 @@ pub fn create_window<R: Runtime>(
         builder = builder.center();
     }
 
-    match frame_builder(builder).build() {
+    match frame_builder(builder, system_title_bar).build() {
         Ok(window) => {
             disable_browser_accelerator_keys(&window);
             close_through_page(&window);
