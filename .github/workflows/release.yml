@@ -1,11 +1,18 @@
 name: Release
 
 # Pushing a tag like v0.1.0 builds the Windows installers and attaches them to
-# a draft GitHub Release. Run the workflow by hand to get the installers as a
-# build artifact without releasing anything.
+# a draft GitHub Release. Pull requests that touch the app build the installers
+# too, as a build artifact only, so a broken release build shows up early. You
+# can also run the workflow by hand.
 on:
   push:
     tags: ["v*"]
+  pull_request:
+    paths:
+      - "src-tauri/**"
+      - "ui/**"
+      - "package*.json"
+      - ".github/workflows/release.yml"
   workflow_dispatch:
 
 permissions:
