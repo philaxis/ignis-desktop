@@ -288,11 +288,18 @@ try {
         $popTarget = (Get-PopoutTargets)[0]
         $mainTarget = Get-MainTarget
         $merged = $false
-        foreach ($dropSelector in '.workspace-tab-header-container-inner', '.workspace-tab-container', '.workspace-tab-header-spacer') {
+        # Drop points come from the main window's real rectangle: the page's
+        # screenX/screenY does not match it exactly in a window without a title bar.
+        $mainRect = Window-Rect $mainWindow
+        $dropPoints = @{
+            'tab header'  = @{ x = $mainRect.Left + 300; y = $mainRect.Top + 25 }
+            'page centre' = @{ x = [int](($mainRect.Left + $mainRect.Right) / 2); y = [int](($mainRect.Top + $mainRect.Bottom) / 2) }
+        }
+        foreach ($dropSelector in 'tab header', 'page centre') {
             if ($merged) { break }
             if ((Get-PopoutTargets).Count -eq 0) { break }
             $from = Element-Center $popTarget '.workspace-tab-header'
-            $to = Element-Center $mainTarget $dropSelector
+            $to = $dropPoints[$dropSelector]
             Note "Drag from $($from.x),$($from.y) to $($to.x),$($to.y) ($dropSelector)"
             $popWin = (App-Windows) | Where-Object { $_ -ne $mainWindow } | Select-Object -First 1
             Focus $popWin
