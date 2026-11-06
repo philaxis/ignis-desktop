@@ -1,0 +1,13 @@
+# Everything a window frame needs: move, minimize, maximize and close the
+# window it lives in. Pages from the configured server get exactly this and
+# nothing else (see src/frame.rs).
+[[set]]
+identifier = "frame-controls"
+description = "Move, minimize, maximize, restore and close the calling window."
+permissions = [
+  "allow-frame-start-dragging",
+  "allow-frame-minimize",
+  "allow-frame-toggle-maximize",
+  "allow-frame-close",
+  "allow-frame-state",
+]

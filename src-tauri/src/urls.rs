@@ -73,6 +73,23 @@ pub fn window_url(
     url
 }
 
+/// Path of the local page that waits for the server to answer, then opens
+/// `target`. Windows start there, so a window always has the app's own page
+/// (and its window controls) until the server is reachable.
+pub fn launcher_path(target: &Url) -> String {
+    format!(
+        "connect.html?target={}",
+        utf8_percent_encode(target.as_str(), COMPONENT)
+    )
+}
+
+/// Whether a page may use the window controls: one of the app's own pages, or
+/// a page on the configured server's origin.
+pub fn is_trusted_page(server: Option<&Url>, page: &Url) -> bool {
+    let is_app_page = page.scheme() == "tauri" || page.host_str() == Some("tauri.localhost");
+    is_app_page || server.is_some_and(|server| same_origin(server, page))
+}
+
 /// What to do with a page's request to open a new window.
 #[derive(Debug, PartialEq, Eq)]
 pub enum NewWindowTarget {
@@ -281,5 +298,38 @@ mod tests {
                 "{raw}"
             );
         }
+    }
+
+    #[test]
+    fn launcher_path_carries_the_target_as_one_parameter() {
+        let target = window_url(&server(), Some("my vault"), Some("w2"), None);
+        let path = launcher_path(&target);
+        assert_eq!(
+            path,
+            "connect.html?target=https%3A%2F%2Fignis.example.ts.net%2F%3Fvault%3Dmy%2520vault%26workspace%3Dw2"
+        );
+        let page = Url::parse("tauri://localhost/")
+            .unwrap()
+            .join(&path)
+            .unwrap();
+        let carried = page.query_pairs().find(|(k, _)| k == "target").unwrap().1;
+        assert_eq!(carried, target.as_str());
+    }
+
+    #[test]
+    fn trusted_pages_are_the_app_and_the_server() {
+        let server = server();
+        let trusted = |raw: &str| is_trusted_page(Some(&server), &Url::parse(raw).unwrap());
+        assert!(trusted("tauri://localhost/connect.html"));
+        assert!(trusted("http://tauri.localhost/connect.html"));
+        assert!(trusted("https://ignis.example.ts.net/?vault=v"));
+        assert!(!trusted("https://ignis.example.ts.net:8443/"));
+        assert!(!trusted("http://ignis.example.ts.net/"));
+        assert!(!trusted("https://old-server.example.ts.net/"));
+        assert!(!trusted("https://tauri.localhost.evil.example/"));
+        assert!(!is_trusted_page(
+            None,
+            &Url::parse("https://ignis.example.ts.net/").unwrap()
+        ));
     }
 }

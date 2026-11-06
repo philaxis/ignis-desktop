@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "setup",
-  "description": "Lets the local server-address page talk to the app. Remote Ignis windows get no capability and therefore no IPC.",
+  "description": "Lets the local server-address page talk to the app.",
   "windows": ["setup"],
-  "permissions": ["core:default"]
+  "permissions": ["core:default", "allow-get-settings", "allow-save-settings"]
 }
