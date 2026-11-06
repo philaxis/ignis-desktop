@@ -160,15 +160,31 @@
     }
   };
 
+  // Starting a drag hands the mouse to the window manager, which can swallow
+  // the first click's release; the page's own click count is not reliable
+  // then. Count two quick presses at nearly the same spot as a double click.
+  const DOUBLE_CLICK_MS = 450;
+  const DOUBLE_CLICK_PX = 6;
+  let lastPress = null;
+
   window.addEventListener(
     'mousedown',
     (event) => {
       if (event.button !== 0 || !(event.target instanceof Element)) return;
       if (event.target.closest(INTERACTIVE) || !event.target.closest(DRAG_AREA)) return;
       event.preventDefault();
-      if (event.detail === 2) {
+      const previous = lastPress;
+      const isDouble =
+        event.detail === 2 ||
+        (previous !== null &&
+          event.timeStamp - previous.time < DOUBLE_CLICK_MS &&
+          Math.abs(event.screenX - previous.x) <= DOUBLE_CLICK_PX &&
+          Math.abs(event.screenY - previous.y) <= DOUBLE_CLICK_PX);
+      if (isDouble) {
+        lastPress = null;
         invoke('frame_toggle_maximize').then(scheduleStateRefresh);
-      } else if (event.detail === 1) {
+      } else {
+        lastPress = { time: event.timeStamp, x: event.screenX, y: event.screenY };
         invoke('frame_start_dragging');
       }
     },
