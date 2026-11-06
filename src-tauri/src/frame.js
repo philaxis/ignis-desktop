@@ -56,7 +56,8 @@
       user-select: none; -webkit-user-select: none;
     }
     #${STRIP_ID} .ignis-frame-button { color: var(--icon-color, #777); }
-    .ignis-frame-buttons > .ignis-frame-button.ignis-frame-button:hover {
+    .ignis-frame-buttons > .ignis-frame-button.ignis-frame-button:hover,
+    .ignis-frame-buttons > .ignis-frame-button.ignis-frame-button.is-hover {
       color: var(--icon-color-hover, currentColor);
       background-color: var(--background-modifier-hover, rgba(128, 128, 128, 0.2));
     }
@@ -85,10 +86,10 @@
     close: 'frame_close',
   };
 
-  const invoke = (command) => {
+  const invoke = (command, args) => {
     const internals = window.__TAURI_INTERNALS__;
     if (!internals) return Promise.resolve(undefined);
-    return Promise.resolve(internals.invoke(command)).catch((error) => {
+    return Promise.resolve(internals.invoke(command, args)).catch((error) => {
       console.debug('ignis-desktop: ' + command + ' failed', error);
     });
   };
@@ -140,6 +141,43 @@
     return Array.from(headers).some((h) => h.getClientRects().length > 0) ? host : null;
   };
 
+  // Windows 11 shows the Snap Layouts flyout over a maximize button only if
+  // the native side answers the hit test there, so the native side puts a
+  // window over the button (see snap.rs). That window gets the mouse instead
+  // of the page, so it reports hover and presses back through __ignisFrameSnap.
+  const WINDOWS = /Windows/.test(navigator.userAgent);
+  const maximizeButton = buttons.querySelector('.mod-maximize');
+  let reportedRect = '';
+  const reportSnapRect = () => {
+    if (!WINDOWS) return;
+    let rect = null;
+    if (maximizeButton.isConnected) {
+      const box = maximizeButton.getBoundingClientRect();
+      if (box.width > 0 && box.height > 0) {
+        const scale = window.devicePixelRatio || 1;
+        rect = {
+          x: Math.round(box.left * scale),
+          y: Math.round(box.top * scale),
+          width: Math.round(box.width * scale),
+          height: Math.round(box.height * scale),
+        };
+      }
+    }
+    const key = JSON.stringify(rect);
+    if (key === reportedRect) return;
+    reportedRect = key;
+    invoke('frame_snap_rect', { rect });
+  };
+  window.__ignisFrameSnap = (kind) => {
+    if (kind === 'enter') maximizeButton.classList.add('is-hover');
+    if (kind === 'leave') maximizeButton.classList.remove('is-hover', 'is-pressed');
+    if (kind === 'down') maximizeButton.classList.add('is-pressed');
+    if (kind === 'up') {
+      maximizeButton.classList.remove('is-pressed');
+      scheduleStateRefresh();
+    }
+  };
+
   const update = () => {
     if (!document.body) return;
     if (!document.getElementById(STYLE_ID)) {
@@ -158,6 +196,7 @@
       const fallback = ensureStrip();
       if (buttons.parentElement !== fallback) fallback.appendChild(buttons);
     }
+    reportSnapRect();
   };
 
   // Starting a drag hands the mouse to the window manager, which can swallow
@@ -190,7 +229,10 @@
     },
     true,
   );
-  window.addEventListener('resize', scheduleStateRefresh);
+  window.addEventListener('resize', () => {
+    scheduleStateRefresh();
+    reportSnapRect();
+  });
 
   document.addEventListener('DOMContentLoaded', () => {
     update();

@@ -2,6 +2,7 @@
 
 mod config;
 mod frame;
+mod snap;
 mod state;
 mod urls;
 mod windows;
@@ -105,6 +106,7 @@ fn main() {
             frame::frame_toggle_maximize,
             frame::frame_close,
             frame::frame_state,
+            frame::frame_snap_rect,
         ])
         .setup(|app| {
             let path = app.path().app_config_dir()?.join("config.json");

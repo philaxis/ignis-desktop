@@ -14,7 +14,7 @@ use serde::Serialize;
 use tauri::{ipc::CapabilityBuilder, AppHandle, Manager, Runtime, WebviewWindow};
 use url::Url;
 
-use crate::{state::AppState, urls::is_trusted_page};
+use crate::{snap::SnapRect, state::AppState, urls::is_trusted_page};
 
 const SCRIPT: &str = include_str!("frame.js");
 
@@ -117,6 +117,18 @@ pub fn frame_state<R: Runtime>(window: WebviewWindow<R>) -> Result<FrameState, S
     Ok(FrameState {
         maximized: window.is_maximized().map_err(|e| e.to_string())?,
     })
+}
+
+/// The page reports where its maximize button is (client pixels) so that
+/// Windows can show the Snap Layouts flyout over it; `None` when there is no
+/// such button. See `snap.rs`.
+#[tauri::command]
+pub fn frame_snap_rect<R: Runtime>(
+    window: WebviewWindow<R>,
+    rect: Option<SnapRect>,
+) -> Result<(), String> {
+    check_caller(&window)?;
+    crate::snap::place(&window, rect)
 }
 
 #[cfg(test)]

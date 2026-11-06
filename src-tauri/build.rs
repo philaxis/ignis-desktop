@@ -9,6 +9,7 @@ fn main() {
         "frame_toggle_maximize",
         "frame_close",
         "frame_state",
+        "frame_snap_rect",
     ]);
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(manifest))
         .expect("failed to run tauri-build");
