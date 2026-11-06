@@ -1,0 +1,15 @@
+{
+  "name": "ignis-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "A native desktop client for self-hosted Ignis servers",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

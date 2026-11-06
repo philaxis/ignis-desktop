@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Ignis Desktop",
+  "version": "0.1.0",
+  "identifier": "dev.philaxis.ignis-desktop",
+  "build": {
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi", "nsis", "deb", "appimage"],
+    "category": "Productivity",
+    "shortDescription": "A native desktop client for self-hosted Ignis servers",
+    "longDescription": "Unofficial native desktop client for self-hosted Ignis servers: real OS windows, one workspace per window, and every shortcut delivered to the page.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}
