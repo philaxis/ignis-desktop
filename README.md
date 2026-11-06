@@ -9,6 +9,8 @@ Ignis Desktop is a real desktop app, not a browser tab. It opens your [Ignis](ht
 
 ![Two Ignis Desktop windows on the same vault, each with its own workspace. The text was typed in the lower window; the upper one shows it too.](docs/screenshots/two-windows.png)
 
+![A note popped out of an Ignis Desktop window on Windows. The line "typed in the pop-out" was typed in the pop-out.](docs/screenshots/popout-windows.png)
+
 How it compares with using Ignis in a browser:
 
 | | Browser tab or PWA | Ignis Desktop |
@@ -17,6 +19,7 @@ How it compares with using Ignis in a browser:
 | Shortcuts | The browser handles some keys first: `Ctrl+P` prints, `Ctrl+F` opens the browser's find bar, `Ctrl+R` reloads. | Browser shortcuts are off. The page gets every key. |
 | Address bar and tabs | A browser always has them. A PWA hides them but a browser still owns the window. | None. |
 | Memory | Shared with every other tab and extension. | Not measured. The app runs only Ignis, with no extensions or other tabs. |
+| Pop-out windows | Ignis turns them off. | *Move current tab to new window* opens a native window that belongs to the window it came from. |
 
 ## Table of Contents
 
@@ -31,7 +34,7 @@ How it compares with using Ignis in a browser:
 
 ## Background
 
-[Ignis](https://github.com/Nystik-gh/ignis) runs Obsidian on a server and serves it to a web browser. It supports several saved workspaces through the `?workspace=` URL parameter, opens notes directly through `?file=`, and keeps tabs in sync over a WebSocket. It has no pop-out windows.
+[Ignis](https://github.com/Nystik-gh/ignis) runs Obsidian on a server and serves it to a web browser. It supports several saved workspaces through the `?workspace=` URL parameter, opens notes directly through `?file=`, and keeps tabs in sync over a WebSocket. It switches Obsidian's pop-out windows off.
 
 Ignis Desktop uses those URL parameters to give you several real windows on one vault:
 
@@ -92,6 +95,7 @@ On Windows, the WebView2 accelerator keys (`Ctrl+F`, `Ctrl+R`, `Ctrl+P`, `Ctrl+U
 
 - Open a new window with `Ctrl+Shift+N` or the tray menu.
 - A page that opens a window with `window.open` or `target=_blank` gets a new native window. If the request points at a note, that window opens the note (`&file=<path>`). Links to other sites open in your system browser.
+- **Pop-out windows** work. Run *Move current tab to new window* or *Open current tab in new window* from the command palette. The pop-out is a window of its own on the desktop, but it belongs to the window it came from: it is not saved with the window list, it has no workspace of its own, and it closes when that window closes. Closing it closes its tabs, as in desktop Obsidian. A pop-out's tab can be dragged back into the main window (Windows).
 - All windows share one data folder, so settings the page stores in the browser (for example your plugin trust choice) apply to every window.
 - Size, position and maximized state are saved for each window. Windows that are still open when you quit from the tray come back on the next start.
 - Closing a window forgets it. Closing the last window quits the app. It does not stay in the tray.
@@ -124,7 +128,9 @@ Tailscale prints the resulting address, something like `https://ignis.example.ts
 
 - **Windows is the main target.** The app builds and runs on Linux, but there is no Linux package. macOS is untested. On Linux, WebKitGTK's own shortcuts are not changed.
 - **The installers are unsigned.** Expect a SmartScreen prompt.
-- **No pop-out windows.** Ignis opens notes as tabs and cannot move a tab into a new window. Ignis Desktop gives you more windows, each with its own workspace.
+- **Pop-outs are not restored after a restart.** Ignis removes saved pop-out windows from the layout when it reads it. A pop-out you left open is gone the next time you start the app; its tabs are not lost from the vault.
+- **Pop-outs rely on Ignis internals.** `popout.js` undoes what Ignis 0.9 does to switch pop-outs off. A later Ignis version that changes that code may turn them off again. See [`docs/upstream-popout.md`](docs/upstream-popout.md).
+- **Linux: dragging a tab between windows does not work.** Dropping a tab on another window ends in an Ignis notice about files outside the vault instead of moving the tab. Use *Move current tab to new window* to pop a tab out. Dragging a tab back works on Windows.
 - **`Ctrl+Shift+N` needs the page.** A small script inside the page handles it. If Ignis is unreachable and the window shows an error page, use the tray menu.
 - **Navigation is not restricted.** A plain link to another site that is not opened as a new window loads inside the window. This keeps login redirects working.
 - **No auto-update.** Download new versions from the Releases page.
@@ -154,13 +160,19 @@ GitHub Actions builds the releases. Pushing a tag such as `v0.1.0` runs [`releas
 
 [`scripts/windows-keytest.ps1`](scripts/windows-keytest.ps1) starts the release build against a local test page, sends `Ctrl+P`, `Ctrl+F`, `F5`, `Ctrl+R`, `Ctrl+U` and `Ctrl+Shift+N`, and reports which keys the page saw and whether the page reloaded. It needs an interactive Windows desktop.
 
+### Checking pop-outs on Windows
+
+[`scripts/windows-popouttest.ps1`](scripts/windows-popouttest.ps1) starts the release build against a real Ignis server (`-Server https://…`), pops a throw-away note out into its own window, types into it, closes it, drags the tab back, and closes the main window while a pop-out is open. It uses the WebView2 debugging port to run Obsidian commands and reads the answers back, and writes a report and screenshots to `popouttest-out`. The note is deleted at the end; delete `workspace.popouttest.json` from the vault yourself. It needs an interactive Windows desktop.
+
 ### Layout
 
 | Path | What it does |
 | --- | --- |
-| `src-tauri/src/urls.rs` | Normalises the server address, builds window URLs and decides what a `window.open` request becomes. |
+| `src-tauri/src/urls.rs` | Normalises the server address, builds window URLs and decides what a `window.open` request becomes (pop-out, new window, system browser). |
 | `src-tauri/src/config.rs` | Reads and writes `config.json`: server, vault, open windows and their geometry. |
 | `src-tauri/src/windows.rs` | Creates windows, tracks and restores geometry, handles new-window requests, sets the WebView2 shortcut option. |
+| `src-tauri/src/popout.rs` | Creates pop-out windows as child webviews of the page that asked, and closes them with their owner. |
+| `src-tauri/src/popout.js` | Page side: turns Obsidian's pop-outs back on, which Ignis switches off. Runs in every Ignis window. |
 | `src-tauri/src/main.rs` | App setup, tray menu and the two commands used by the settings page. |
 | `ui/index.html` | The local first-run page. Ignis windows get no access to the app's IPC. |
 
