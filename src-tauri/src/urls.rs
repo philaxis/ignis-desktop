@@ -81,6 +81,10 @@ pub enum NewWindowTarget {
         vault: Option<String>,
         file: Option<String>,
     },
+    /// An Obsidian pop-out: an empty `about:blank` window that the opening page
+    /// fills in itself. It must be created as a child of the opener's webview
+    /// so that `window.open` returns it.
+    Popout,
     /// Hand the link to the system browser.
     External(Url),
     /// Do nothing (blob:, data:, javascript:, …).
@@ -102,17 +106,15 @@ fn query_value(url: &Url, key: &str) -> Option<String> {
 
 /// Classifies a `window.open` / `target=_blank` request.
 ///
-/// * The server's own page (any query) and `about:blank` become a native
-///   window; `vault` and `file` are carried over, `workspace` is not, because
-///   every window gets its own.
+/// * `about:blank` is a pop-out window.
+/// * The server's own page (any query) becomes a native window; `vault` and
+///   `file` are carried over, `workspace` is not, because every window gets
+///   its own.
 /// * Any other http(s) or mailto URL, including other paths on the server such
 ///   as file downloads, goes to the system browser.
 pub fn classify_new_window(server: &Url, requested: &Url) -> NewWindowTarget {
     match requested.scheme() {
-        "about" if requested.as_str() == "about:blank" => NewWindowTarget::Native {
-            vault: None,
-            file: None,
-        },
+        "about" if requested.as_str() == "about:blank" => NewWindowTarget::Popout,
         "http" | "https" if same_origin(server, requested) && requested.path() == server.path() => {
             NewWindowTarget::Native {
                 vault: query_value(requested, "vault"),
@@ -233,14 +235,11 @@ mod tests {
     }
 
     #[test]
-    fn classify_about_blank_opens_a_native_window() {
+    fn classify_about_blank_is_a_popout() {
         let requested = Url::parse("about:blank").unwrap();
         assert_eq!(
             classify_new_window(&server(), &requested),
-            NewWindowTarget::Native {
-                vault: None,
-                file: None
-            }
+            NewWindowTarget::Popout
         );
     }
 
