@@ -1,6 +1,6 @@
 [package]
 name = "ignis-desktop"
-version = "0.1.0"
+version = "0.2.0"
 description = "Unofficial desktop app for Ignis — use your self-hosted Obsidian in multiple native windows (Windows, Linux)"
 license = "MIT"
 edition = "2021"
