@@ -96,7 +96,8 @@ setInterval(() => {
     '&toggle=' + rect('.sidebar-toggle-button') +
     '&min=' + rect('.ignis-frame-button.mod-minimize') +
     '&max=' + rect('.ignis-frame-button.mod-maximize') +
-    '&close=' + rect('.ignis-frame-button.mod-close'));
+    '&close=' + rect('.ignis-frame-button.mod-close') +
+    '&hover=' + (document.querySelector('.ignis-frame-button.mod-maximize.is-hover') ? 1 : 0));
 }, 700);
 </script>
 '@
@@ -287,7 +288,15 @@ try {
         }
     }
 
-XX
+    # Snap Layouts: hover the maximize button and wait for the flyout. The
+    # native window over the button reports the hover back to the page.
+    Focus-App
+    $c = Center-Of 'max'
+    Mouse-To $c[0] $c[1]; Start-Sleep -Milliseconds 300
+    Mouse-To ($c[0] + 1) $c[1]
+    Start-Sleep -Seconds 2
+    Shot '04-hover-maximize'
+    Say "Hovering the maximize button reached the page: $((Page-Rects)['hover'] -eq 1)"
 
     # Buttons.
     Focus-App
