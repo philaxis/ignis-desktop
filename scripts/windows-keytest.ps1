@@ -21,6 +21,10 @@ using System.Runtime.InteropServices;
 public class Win32 {
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
     [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
+    [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
+    [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
+    [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
 }
 '@
 
@@ -93,8 +97,21 @@ function Focus-App {
     if ($p) { [Win32]::ShowWindow($p.MainWindowHandle, 9) | Out-Null; [Win32]::SetForegroundWindow($p.MainWindowHandle) | Out-Null }
     Start-Sleep -Milliseconds 500
 }
+# Real key presses only reach the page once the web content has keyboard focus,
+# so click into it first.
+function Click-Page {
+    $p = Get-Process ignis-desktop -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+    if (-not $p) { return }
+    $r = New-Object Win32+RECT
+    [Win32]::GetWindowRect($p.MainWindowHandle, [ref]$r) | Out-Null
+    [Win32]::SetCursorPos([int](($r.Left + $r.Right) / 2), [int]($r.Top + 300)) | Out-Null
+    [Win32]::mouse_event(0x02, 0, 0, 0, [UIntPtr]::Zero)
+    [Win32]::mouse_event(0x04, 0, 0, 0, [UIntPtr]::Zero)
+    Start-Sleep -Milliseconds 500
+}
 function Send($keys, $label) {
     Focus-App
+    Click-Page
     [Windows.Forms.SendKeys]::SendWait($keys)
     Start-Sleep -Milliseconds 1500
     Shot $label
@@ -105,7 +122,7 @@ try {
     $app = Start-Process $Exe -PassThru
     Start-Sleep -Seconds 10
     Shot '00-start'
-    $loads = if (Test-Path $requests) { @(Get-Content $requests | Where-Object { $_ -notlike '/__key*' }).Count } else { 0 }
+    $loads = if (Test-Path $requests) { @(Get-Content $requests | Where-Object { $_ -notlike '/__key*' -and $_ -ne '/favicon.ico' }).Count } else { 0 }
 
     Send '^p' '01-ctrl-p'
     Send '^f' '02-ctrl-f'
@@ -125,11 +142,11 @@ try {
 
 $log = if (Test-Path $requests) { @(Get-Content $requests) } else { @() }
 $keys = @($log | Where-Object { $_ -like '/__key*' } | ForEach-Object { [Uri]::UnescapeDataString(($_ -split 'k=')[1]) })
-$pageLoads = @($log | Where-Object { $_ -notlike '/__key*' })
+$pageLoads = @($log | Where-Object { $_ -notlike '/__key*' -and $_ -ne '/favicon.ico' })
 $report.Add("Test server self-check: $self")
 if (Test-Path "$requests.err") { $report.Add("Server error: $(Get-Content "$requests.err" -Raw)") }
 $report.Add("Keys seen by the page: $($keys -join ', ')")
-$report.Add("Page loads: $($pageLoads.Count) (initial load: $loads)")
+$report.Add("Page loads: $($pageLoads.Count) (before the key presses: $loads)")
 $pageLoads | ForEach-Object { $report.Add("  GET $_") }
 foreach ($k in 'Ctrl+p', 'Ctrl+f', 'F5', 'Ctrl+r', 'Ctrl+u') {
     $report.Add("page received $k : $($keys -contains $k)")

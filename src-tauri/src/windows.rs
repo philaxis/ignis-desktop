@@ -28,7 +28,8 @@ const SHORTCUT_SCRIPT: &str = r#"
 (() => {
   if (window.top !== window) return;
   window.addEventListener('keydown', (event) => {
-    if (event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey && event.code === 'KeyN') {
+    const isN = event.code === 'KeyN' || event.key === 'n' || event.key === 'N';
+    if (event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey && isN) {
       event.preventDefault();
       event.stopImmediatePropagation();
       window.open(location.origin + location.pathname + '?ignis-desktop=new-window', '_blank');
