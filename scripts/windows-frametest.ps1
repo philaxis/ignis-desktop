@@ -34,8 +34,10 @@ public class Win32 {
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
     [DllImport("user32.dll")] public static extern bool IsZoomed(IntPtr h);
     [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
-    [DllImport("user32.dll")] public static extern int GetWindowLong(IntPtr h, int index);
+    [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr h);
+    [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr h, ref POINT p);
     [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
+    [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
 }
 '@
 [Win32]::SetProcessDPIAware() | Out-Null
@@ -142,9 +144,14 @@ function Shot($name) {
     [Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [Drawing.Point]::Empty, $b.Size)
     $bmp.Save((Join-Path $out "$name.png"), [Drawing.Imaging.ImageFormat]::Png)
 }
+# The window handle is remembered: a minimized window stops being the
+# process's "main window" as far as Get-Process is concerned.
+$script:Hwnd = [IntPtr]::Zero
 function App-Handle {
+    if ($script:Hwnd -ne [IntPtr]::Zero -and [Win32]::IsWindow($script:Hwnd)) { return $script:Hwnd }
     $p = Get-Process ignis-desktop -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
-    if ($p) { $p.MainWindowHandle } else { [IntPtr]::Zero }
+    $script:Hwnd = if ($p) { $p.MainWindowHandle } else { [IntPtr]::Zero }
+    $script:Hwnd
 }
 function Get-Rect {
     $h = App-Handle
@@ -156,7 +163,10 @@ function Get-Rect {
 function Describe($r) { if ($r) { "L=$($r.Left) T=$($r.Top) W=$($r.Right - $r.Left) H=$($r.Bottom - $r.Top)" } else { 'no window' } }
 function Focus-App {
     $h = App-Handle
-    if ($h -ne [IntPtr]::Zero) { [Win32]::ShowWindow($h, 9) | Out-Null; [Win32]::SetForegroundWindow($h) | Out-Null }
+    if ($h -ne [IntPtr]::Zero) {
+        if ([Win32]::IsIconic($h)) { [Win32]::ShowWindow($h, 9) | Out-Null }
+        [Win32]::SetForegroundWindow($h) | Out-Null
+    }
     Start-Sleep -Milliseconds 400
 }
 function Mouse-To($x, $y) { [Win32]::SetCursorPos([int]$x, [int]$y) | Out-Null }
@@ -193,13 +203,19 @@ function Page-Rects {
     }
     $map
 }
+# Where the page's top-left corner is on screen.
+function Client-Origin {
+    $p = New-Object Win32+POINT
+    [Win32]::ClientToScreen((App-Handle), [ref]$p) | Out-Null
+    $p
+}
 # Centre of a page element on screen.
 function Center-Of($name) {
     $rects = Page-Rects
-    $r = Get-Rect
-    if (-not $rects.ContainsKey($name) -or -not $r) { return $null }
+    if (-not $rects.ContainsKey($name)) { return $null }
+    $o = Client-Origin
     $e = $rects[$name]
-    @(($r.Left + $e[0] + $e[2] / 2), ($r.Top + $e[1] + $e[3] / 2))
+    @(($o.X + $e[0] + $e[2] / 2), ($o.Y + $e[1] + $e[3] / 2))
 }
 function Presses($name) {
     if (-not (Test-Path $requests)) { return 0 }
@@ -216,10 +232,10 @@ try {
     Start-Sleep -Seconds 12
     Focus-App
     Shot '00-start'
-    $h = App-Handle
-    $style = [Win32]::GetWindowLong($h, -16)
-    Say "Window: $(Describe (Get-Rect))"
-    Say "Native title bar (WS_CAPTION) present: $((($style -band 0xC00000) -eq 0xC00000))"
+    $r = Get-Rect
+    $o = Client-Origin
+    Say "Window: $(Describe $r)"
+    Say "Page starts $($o.Y - $r.Top) px below the top of the window (no native title bar: $(($o.Y - $r.Top) -lt 8))"
     $rects = Page-Rects
     Say "Page reported: $(($rects.Keys | Sort-Object | ForEach-Object { "$_=$($rects[$_] -join ',')" }) -join ' ')"
     Say "Window controls drawn in the tab header (min/max/close rects reported): $([bool]($rects['min'] -and $rects['max'] -and $rects['close']))"
@@ -267,17 +283,11 @@ try {
         } else {
             # Pull it back out of the snapped state.
             $c = Center-Of 'spacer'
-            Drag $c[0] $c[1] ($screen.Left + 300) ($screen.Top + 200)
+            Drag $c[0] $c[1] ($screen.Left + 900) ($screen.Top + 200)
         }
     }
 
-    # Snap Layouts: hover the maximize button and wait for the flyout.
-    Focus-App
-    $c = Center-Of 'max'
-    Mouse-To $c[0] $c[1]; Start-Sleep -Milliseconds 300
-    Mouse-To ($c[0] + 1) $c[1]
-    Start-Sleep -Seconds 2
-    Shot '04-hover-maximize'
+XX
 
     # Buttons.
     Focus-App
