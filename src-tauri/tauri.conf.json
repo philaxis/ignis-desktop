@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Ignis Desktop",
+  "version": "0.1.0",
+  "identifier": "dev.philaxis.ignis-desktop",
+  "build": {
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi", "nsis", "deb", "appimage"],
+    "category": "Productivity",
+    "shortDescription": "Unofficial desktop app for Ignis — use your self-hosted Obsidian in multiple native windows (Windows, Linux)",
+    "longDescription": "Unofficial desktop app for Ignis — use your self-hosted Obsidian in multiple native windows (Windows, Linux)",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

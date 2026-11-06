@@ -1,0 +1,37 @@
+[package]
+name = "ignis-desktop"
+version = "0.1.0"
+description = "Unofficial desktop app for Ignis — use your self-hosted Obsidian in multiple native windows (Windows, Linux)"
+license = "MIT"
+edition = "2021"
+rust-version = "1.80"
+
+[features]
+# Enabled by `tauri build`; serves the bundled UI instead of a dev server.
+custom-protocol = ["tauri/custom-protocol"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-opener = "2"
+tauri-plugin-single-instance = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+url = "2"
+percent-encoding = "2"
+
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.39"
+windows-core = "0.62"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

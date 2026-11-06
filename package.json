@@ -1,0 +1,15 @@
+{
+  "name": "ignis-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Unofficial desktop app for Ignis — use your self-hosted Obsidian in multiple native windows (Windows, Linux)",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}
