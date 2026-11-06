@@ -327,7 +327,9 @@ try {
     $r = Get-Rect
     Say "Offline window: $(Describe $r)"
     $before = $r
-    Drag ($r.Left + ($r.Right - $r.Left) / 2) ($r.Top + 12) ($r.Left + ($r.Right - $r.Left) / 2 + 120) ($r.Top + 80)
+    # Move towards the middle of the screen so the close button stays on screen.
+    $dx = if ($r.Right + 120 -gt $screen.Right) { -120 } else { 120 }
+    Drag ($r.Left + ($r.Right - $r.Left) / 2) ($r.Top + 12) ($r.Left + ($r.Right - $r.Left) / 2 + $dx) ($r.Top + 80)
     $after = Get-Rect
     Say "Offline drag by the strip moved: $($after.Left - $before.Left),$($after.Top - $before.Top)"
     Shot '08-offline-dragged'
