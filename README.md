@@ -13,7 +13,7 @@ How it compares with using Ignis in a browser:
 
 | | Browser tab or PWA | Ignis Desktop |
 | --- | --- | --- |
-| Windows | One tab per view. A PWA gives you one window. | Any number of native windows. Each has its own Ignis workspace and is remembered between runs. |
+| Windows | Extra windows share one layout unless you add `?workspace=` to each URL by hand. | Any number of native windows. Each gets its own Ignis workspace automatically and is remembered between runs. |
 | Shortcuts | The browser handles some keys first: `Ctrl+P` prints, `Ctrl+F` opens the browser's find bar, `Ctrl+R` reloads. | Browser shortcuts are off. The page gets every key. |
 | Address bar and tabs | A browser always has them. A PWA hides them but a browser still owns the window. | None. |
 | Memory | Shared with every other tab and extension. | Not measured. The app runs only Ignis, with no extensions or other tabs. |
