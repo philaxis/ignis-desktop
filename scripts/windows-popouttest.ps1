@@ -286,24 +286,30 @@ try {
     Start-Sleep -Seconds 2
     if ($popped) {
         $popTarget = (Get-PopoutTargets)[0]
-        $from = Element-Center $popTarget '.workspace-tab-header'
         $mainTarget = Get-MainTarget
-        $to = Element-Center $mainTarget '.workspace-tab-header-container-inner'
-        Note "Drag from $($from.x),$($from.y) to $($to.x),$($to.y)"
-        $popWin = (App-Windows) | Where-Object { $_ -ne $mainWindow } | Select-Object -First 1
-        Focus $popWin
-        [Win32]::SetCursorPos($from.x, $from.y) | Out-Null
-        Start-Sleep -Milliseconds 300
-        [Win32]::mouse_event(0x02, 0, 0, 0, [UIntPtr]::Zero)
-        for ($i = 1; $i -le 30; $i++) {
-            $x = [int]($from.x + ($to.x - $from.x) * $i / 30)
-            $y = [int]($from.y + ($to.y - $from.y) * $i / 30)
-            [Win32]::SetCursorPos($x, $y) | Out-Null
-            Start-Sleep -Milliseconds 40
+        $merged = $false
+        foreach ($dropSelector in '.workspace-tab-header-container-inner', '.workspace-tab-container', '.workspace-tab-header-spacer') {
+            if ($merged) { break }
+            if ((Get-PopoutTargets).Count -eq 0) { break }
+            $from = Element-Center $popTarget '.workspace-tab-header'
+            $to = Element-Center $mainTarget $dropSelector
+            Note "Drag from $($from.x),$($from.y) to $($to.x),$($to.y) ($dropSelector)"
+            $popWin = (App-Windows) | Where-Object { $_ -ne $mainWindow } | Select-Object -First 1
+            Focus $popWin
+            [Win32]::SetCursorPos($from.x, $from.y) | Out-Null
+            Start-Sleep -Milliseconds 300
+            [Win32]::mouse_event(0x02, 0, 0, 0, [UIntPtr]::Zero)
+            for ($i = 1; $i -le 30; $i++) {
+                $x = [int]($from.x + ($to.x - $from.x) * $i / 30)
+                $y = [int]($from.y + ($to.y - $from.y) * $i / 30)
+                [Win32]::SetCursorPos($x, $y) | Out-Null
+                Start-Sleep -Milliseconds 40
+            }
+            Start-Sleep -Milliseconds 400
+            [Win32]::mouse_event(0x04, 0, 0, 0, [UIntPtr]::Zero)
+            $merged = Wait-Until 6 { (Eval-Main $noteContainer) -eq 'split' }
+            Note ("  merged: $merged; note container: " + (Eval-Main $noteContainer) + "; popout window rect: " + ((App-Windows | ForEach-Object { $r = Window-Rect $_; "$($r.Left),$($r.Top),$($r.Right),$($r.Bottom)" }) -join ' | '))
         }
-        Start-Sleep -Milliseconds 400
-        [Win32]::mouse_event(0x04, 0, 0, 0, [UIntPtr]::Zero)
-        $merged = Wait-Until 10 { (Eval-Main $noteContainer) -eq 'split' }
         Check "Dragging the tab back put it into the main window again ($label)" $merged
         Start-Sleep -Seconds 2
         Check "The now-empty pop-out closed itself ($label)" (Wait-State 8 { param($st) $st.Pages -eq 0 -and $st.Windows -le $before })
