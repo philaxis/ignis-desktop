@@ -45,7 +45,8 @@ addEventListener('keydown', (e) => {
 '@
 $server = Start-Job -ArgumentList $port, $page, $requests -ScriptBlock {
     param($port, $page, $requests)
-    $listener = New-Object System.Net.Sockets.TcpListener ([Net.IPAddress]::Loopback), $port
+    try {
+    $listener = New-Object System.Net.Sockets.TcpListener([Net.IPAddress]::Loopback, [int]$port)
     $listener.Start()
     while ($true) {
         $client = $listener.AcceptTcpClient()
@@ -65,8 +66,11 @@ $server = Start-Job -ArgumentList $port, $page, $requests -ScriptBlock {
         } catch { }
         $client.Close()
     }
+    } catch { $_ | Out-String | Set-Content "$requests.err" }
 }
-Start-Sleep -Seconds 2
+Start-Sleep -Seconds 3
+try { $self = (Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:$port/__selfcheck").StatusCode } catch { $self = $_.Exception.Message }
+Remove-Item $requests -ErrorAction SilentlyContinue
 
 # --- throw-away config ------------------------------------------------------
 $configDir = Join-Path $env:APPDATA 'dev.philaxis.ignis-desktop'
@@ -122,6 +126,8 @@ try {
 $log = if (Test-Path $requests) { @(Get-Content $requests) } else { @() }
 $keys = @($log | Where-Object { $_ -like '/__key*' } | ForEach-Object { [Uri]::UnescapeDataString(($_ -split 'k=')[1]) })
 $pageLoads = @($log | Where-Object { $_ -notlike '/__key*' })
+$report.Add("Test server self-check: $self")
+if (Test-Path "$requests.err") { $report.Add("Server error: $(Get-Content "$requests.err" -Raw)") }
 $report.Add("Keys seen by the page: $($keys -join ', ')")
 $report.Add("Page loads: $($pageLoads.Count) (initial load: $loads)")
 $pageLoads | ForEach-Object { $report.Add("  GET $_") }
