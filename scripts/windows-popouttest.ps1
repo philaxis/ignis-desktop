@@ -275,7 +275,10 @@ try {
         Shot '04-popout-closed'
     }
 
-    # 4. Pop out again and drag the tab back
+    function Test-DragBack($label, [scriptblock]$prepare) {
+    foreach ($w in @(App-Windows | Where-Object { $_ -ne $mainWindow })) { Close-Window $w }
+    Start-Sleep -Seconds 3
+    & $prepare
     Eval-Main $showOnlyTestNote | Out-Null
     Start-Sleep -Seconds 1
     Eval-Main $cmdPopout | Out-Null
@@ -301,13 +304,18 @@ try {
         Start-Sleep -Milliseconds 400
         [Win32]::mouse_event(0x04, 0, 0, 0, [UIntPtr]::Zero)
         $merged = Wait-Until 10 { (Eval-Main $noteContainer) -eq 'split' }
-        Check 'Dragging the tab back put it into the main window again' $merged
+        Check "Dragging the tab back put it into the main window again ($label)" $merged
         Start-Sleep -Seconds 2
-        Check 'The now-empty pop-out closed itself (page and window gone)' (Wait-State 8 { param($st) $st.Pages -eq 0 -and $st.Windows -le $before })
-        Shot '05-merged-back'
+        Check "The now-empty pop-out closed itself ($label)" (Wait-State 8 { param($st) $st.Pages -eq 0 -and $st.Windows -le $before })
+        Shot "05-merged-back-$label"
     } else {
-        Check 'Second pop-out opened' $false
+        Check "Second pop-out opened ($label)" $false
     }
+    }
+
+    # 4. Pop out again and drag the tab back, with and without the frame script in the pop-out
+    Test-DragBack 'frame in pop-out' { }
+    Test-DragBack 'no frame script in pop-out' { Eval-Main 'delete window.__ignisFrameSource' | Out-Null }
 
     # 5. Closing the main window closes its pop-outs
     Eval-Main "app.vault.getAbstractFileByPath('$testNote') && app.vault.delete(app.vault.getAbstractFileByPath('$testNote')).then(() => true)" | Out-Null
