@@ -5,7 +5,7 @@
 
 Unofficial desktop app for Ignis — use your self-hosted Obsidian in multiple native windows (Windows, Linux)
 
-Ignis Desktop is a real desktop app, not a browser tab. It opens your [Ignis](https://github.com/Nystik-gh/ignis) server in native OS windows, as many as you want, and every shortcut goes to Obsidian instead of the browser. There is no address bar, no tab strip and no browser menu. `Ctrl+P` opens the command palette, `Ctrl+W` closes an Obsidian tab, and `F5` does not reload the page under you.
+Ignis Desktop is a real desktop app, not a browser tab. It opens your [Ignis](https://github.com/Nystik-gh/ignis) server in native OS windows, as many as you want, and every shortcut goes to Obsidian instead of the browser. There is no address bar, no browser tab strip, no browser menu and no separate title bar: Obsidian's own tab header is the title bar. `Ctrl+P` opens the command palette, `Ctrl+W` closes an Obsidian tab, and `F5` does not reload the page under you.
 
 ![Two Ignis Desktop windows on the same vault, each with its own workspace. The text was typed in the lower window; the upper one shows it too.](docs/screenshots/two-windows.png)
 
@@ -15,7 +15,7 @@ How it compares with using Ignis in a browser:
 | --- | --- | --- |
 | Windows | Extra windows share one layout unless you add `?workspace=` to each URL by hand. | Any number of native windows. Each gets its own Ignis workspace automatically and is remembered between runs. |
 | Shortcuts | The browser handles some keys first: `Ctrl+P` prints, `Ctrl+F` opens the browser's find bar, `Ctrl+R` reloads. | Browser shortcuts are off. The page gets every key. |
-| Address bar and tabs | A browser always has them. A PWA hides them but a browser still owns the window. | None. |
+| Address bar, tabs and title bar | A browser always has them. A PWA hides them but a browser still owns the window. | None. The window has no title bar of its own; you move it by the empty part of Obsidian's tab header. |
 | Memory | Shared with every other tab and extension. | Not measured. The app runs only Ignis, with no extensions or other tabs. |
 
 ## Table of Contents
@@ -91,6 +91,13 @@ On Windows, the WebView2 accelerator keys (`Ctrl+F`, `Ctrl+R`, `Ctrl+P`, `Ctrl+U
 ### Windows
 
 - Open a new window with `Ctrl+Shift+N` or the tray menu.
+- Windows have no native title bar. Obsidian's tab header is the title bar:
+  - Drag an empty part of the tab header to move the window; double-click it to maximize or restore.
+  - Minimize, maximize and close sit at the right end of the header, in the place Obsidian's "Hidden" frame style gives them. They follow the theme colors.
+  - Windows snap to the screen edges. On Windows 11, hovering the maximize button opens the Snap Layouts flyout.
+  - The window borders still resize the window.
+  - While the page is not there (still loading, server down, or an error page from a proxy), a thin strip along the top does the same job.
+  - Choose *Use system title bar* in the tray menu to get the operating system's title bar back. It applies to windows you open afterwards.
 - A page that opens a window with `window.open` or `target=_blank` gets a new native window. If the request points at a note, that window opens the note (`&file=<path>`). Links to other sites open in your system browser.
 - All windows share one data folder, so settings the page stores in the browser (for example your plugin trust choice) apply to every window.
 - Size, position and maximized state are saved for each window. Windows that are still open when you quit from the tray come back on the next start.
@@ -103,6 +110,7 @@ On Windows, the WebView2 accelerator keys (`Ctrl+F`, `Ctrl+R`, `Ctrl+P`, `Ctrl+U
 | --- | --- |
 | New window | Open another window. |
 | Change server address… | Open the settings window. |
+| Use system title bar | Checked: windows opened from now on have the operating system's title bar instead of Obsidian's tab header. Off by default. |
 | Quit | Save all windows and exit. |
 
 ## Requirements
@@ -124,6 +132,7 @@ Tailscale prints the resulting address, something like `https://ignis.example.ts
 
 - **Windows is the main target.** The app builds and runs on Linux, but there is no Linux package. macOS is untested. On Linux, WebKitGTK's own shortcuts are not changed.
 - **The installers are unsigned.** Expect a SmartScreen prompt.
+- **A reload with the server down can lose the controls.** A window starts on a small local page that waits for the server. If you reload an open Ignis window while the server is down, the web view may replace the page with its own error page, which has no window controls. Close the window from the taskbar or with `Alt+F4`.
 - **No pop-out windows.** Ignis opens notes as tabs and cannot move a tab into a new window. Ignis Desktop gives you more windows, each with its own workspace.
 - **`Ctrl+Shift+N` needs the page.** A small script inside the page handles it. If Ignis is unreachable and the window shows an error page, use the tray menu.
 - **Navigation is not restricted.** A plain link to another site that is not opened as a new window loads inside the window. This keeps login redirects working.
@@ -154,6 +163,10 @@ GitHub Actions builds the releases. Pushing a tag such as `v0.1.0` runs [`releas
 
 [`scripts/windows-keytest.ps1`](scripts/windows-keytest.ps1) starts the release build against a local test page, sends `Ctrl+P`, `Ctrl+F`, `F5`, `Ctrl+R`, `Ctrl+U` and `Ctrl+Shift+N`, and reports which keys the page saw and whether the page reloaded. It needs an interactive Windows desktop.
 
+### Checking the window frame on Windows
+
+[`scripts/windows-frametest.ps1`](scripts/windows-frametest.ps1) serves a page with Obsidian's tab header structure, starts the release build against it and drives the mouse: drag, double-click, the three buttons, snapping to the left, right and top screen edges, hovering the maximize button, and the strip when the server is down. It writes `frametest-out\report.txt` and screenshots. It needs an interactive Windows desktop.
+
 ### Layout
 
 | Path | What it does |
@@ -161,8 +174,11 @@ GitHub Actions builds the releases. Pushing a tag such as `v0.1.0` runs [`releas
 | `src-tauri/src/urls.rs` | Normalises the server address, builds window URLs and decides what a `window.open` request becomes. |
 | `src-tauri/src/config.rs` | Reads and writes `config.json`: server, vault, open windows and their geometry. |
 | `src-tauri/src/windows.rs` | Creates windows, tracks and restores geometry, handles new-window requests, sets the WebView2 shortcut option. |
-| `src-tauri/src/main.rs` | App setup, tray menu and the two commands used by the settings page. |
-| `ui/index.html` | The local first-run page. Ignis windows get no access to the app's IPC. |
+| `src-tauri/src/frame.rs`, `src-tauri/src/frame.js` | The window frame: the commands that move, minimize, maximize and close the calling window, the capability that lets only the configured server's origin use them, and the script that draws the controls into Obsidian's tab header. |
+| `src-tauri/src/snap.rs` | Windows only: the child window over the maximize button that makes Snap Layouts appear. |
+| `src-tauri/src/main.rs` | App setup, tray menu and the commands used by the settings page. |
+| `ui/index.html` | The local first-run page. |
+| `ui/connect.html` | The page every window starts on. It waits for the server to answer, then opens it. |
 
 ## Contributing
 

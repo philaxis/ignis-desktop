@@ -31,6 +31,9 @@ pub struct WindowRecord {
 pub struct Config {
     pub server_url: Option<String>,
     pub vault: Option<String>,
+    /// Use the operating system's title bar instead of Obsidian's tab header.
+    /// Applies to windows opened after the change.
+    pub system_title_bar: bool,
     pub windows: Vec<WindowRecord>,
 }
 
@@ -179,6 +182,7 @@ mod tests {
         let mut config = Config {
             server_url: Some("https://ignis.example.ts.net/".into()),
             vault: Some("vault".into()),
+            system_title_bar: true,
             ..Config::default()
         };
         config.ensure_window(MAIN_WINDOW_ID);
@@ -213,6 +217,7 @@ mod tests {
         let config = Config::load(&path).unwrap();
         assert_eq!(config.server_url.as_deref(), Some("https://a.example/"));
         assert!(config.windows.is_empty());
+        assert!(!config.system_title_bar);
     }
 
     #[test]

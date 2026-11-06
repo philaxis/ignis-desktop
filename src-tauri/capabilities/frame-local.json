@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "frame-local",
+  "description": "Window controls for the app's own pages (the connect page). Pages from the Ignis server get the same permissions through a capability that src/frame.rs adds at run time for the configured origin only.",
+  "windows": ["*"],
+  "permissions": ["frame-controls"]
+}
