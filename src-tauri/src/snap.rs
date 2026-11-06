@@ -105,7 +105,7 @@ mod imp {
     #[derive(Default)]
     struct Registry {
         by_sink: HashMap<isize, Arc<Sink>>,
-        sink_of_parent: HashMap<isize, HWND>,
+        sink_of_parent: HashMap<isize, isize>,
     }
 
     static REGISTRY: LazyLock<Mutex<Registry>> = LazyLock::new(Mutex::default);
@@ -142,7 +142,10 @@ mod imp {
         rect: Option<SnapRect>,
     ) -> Result<(), String> {
         let parent = HWND(window.hwnd().map_err(|e| e.to_string())?.0);
-        let existing = lock().sink_of_parent.get(&(parent.0 as isize)).copied();
+        let existing = lock()
+            .sink_of_parent
+            .get(&(parent.0 as isize))
+            .map(|sink| HWND(*sink as *mut _));
         let sink = match (existing, rect) {
             (Some(sink), _) => sink,
             (None, None) => return Ok(()),
@@ -216,7 +219,9 @@ mod imp {
         {
             let mut registry = lock();
             registry.by_sink.insert(hwnd.0 as isize, sink);
-            registry.sink_of_parent.insert(parent.0 as isize, hwnd);
+            registry
+                .sink_of_parent
+                .insert(parent.0 as isize, hwnd.0 as isize);
         }
         unsafe {
             let _ = SetWindowSubclass(parent, Some(parent_proc), SUBCLASS_ID, hwnd.0 as usize);
