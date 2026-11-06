@@ -17,8 +17,8 @@
     "active": true,
     "targets": ["msi", "nsis", "deb", "appimage"],
     "category": "Productivity",
-    "shortDescription": "A native desktop client for self-hosted Ignis servers",
-    "longDescription": "Unofficial native desktop client for self-hosted Ignis servers: real OS windows, one workspace per window, and every shortcut delivered to the page.",
+    "shortDescription": "Unofficial desktop app for Ignis — use your self-hosted Obsidian in multiple native windows (Windows, Linux)",
+    "longDescription": "Unofficial desktop app for Ignis — use your self-hosted Obsidian in multiple native windows (Windows, Linux)",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

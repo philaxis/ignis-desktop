@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
-  "description": "A native desktop client for self-hosted Ignis servers",
+  "description": "Unofficial desktop app for Ignis — use your self-hosted Obsidian in multiple native windows (Windows, Linux)",
   "scripts": {
     "tauri": "tauri",
     "dev": "tauri dev",

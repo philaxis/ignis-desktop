@@ -1,44 +1,65 @@
 # Ignis Desktop
 
-> **Unofficial — not affiliated with Ignis or Obsidian.**
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/philaxis/ignis-desktop?include_prereleases)](../../releases)
 
-**A native desktop app for your Ignis server — real OS windows, as many as you want, with every shortcut going to Obsidian, not the browser.**
+Unofficial desktop app for Ignis — use your self-hosted Obsidian in multiple native windows (Windows, Linux)
 
-[Ignis](https://github.com/Nystik-gh/ignis) runs Obsidian on a server and serves it to a web browser. Ignis Desktop is not a browser tab and not a PWA: it is a small desktop application (built with [Tauri](https://tauri.app)) that opens your Ignis server in its own native windows. No address bar, no tabs, no browser chrome. Open as many windows as you like, put them on different monitors, and every key you press (`Ctrl+P`, `Ctrl+W`, `Ctrl+F`, `Ctrl+Tab`, `F5`, ...) is delivered to the page instead of being handled by the browser.
+Ignis Desktop is a real desktop app, not a browser tab. It opens your [Ignis](https://github.com/Nystik-gh/ignis) server in native OS windows, as many as you want, and every shortcut goes to Obsidian instead of the browser. There is no address bar, no tab strip and no browser menu. `Ctrl+P` opens the command palette, `Ctrl+W` closes an Obsidian tab, and `F5` does not reload the page under you.
 
-![Two Ignis Desktop windows on the same vault, with different workspaces. An edit made in one window shows up in the other.](docs/screenshots/two-windows.png)
+![Two Ignis Desktop windows on the same vault, each with its own workspace. The text was typed in the lower window; the upper one shows it too.](docs/screenshots/two-windows.png)
 
-*Two windows, two Ignis workspaces, one vault. The text was typed in the lower window; the upper one picked it up within a second.*
+How it compares with using Ignis in a browser:
 
-## Why use it instead of a browser tab
-
-| | Browser tab / PWA | Ignis Desktop |
+| | Browser tab or PWA | Ignis Desktop |
 | --- | --- | --- |
-| Windows | One tab per view, or one PWA window. Another window means a duplicate of the whole page. | Any number of native windows. Each one has its own Ignis workspace layout, remembered between runs. |
-| Shortcuts | The browser handles some keys first: `Ctrl+W` closes the tab, `Ctrl+P` prints, `Ctrl+F` opens the browser's find bar, `Ctrl+R` reloads. | Browser shortcuts are switched off. Obsidian gets the keys, so `Ctrl+P` opens the command palette. |
-| Address bar and tabs | Always there (a PWA hides them, but a browser still owns the window). | None. The window is just Ignis. |
-| Memory | Shares a browser process with every other tab and extension. | Not measured. It runs only Ignis, with no extensions and no other tabs, but no benchmark backs a number yet. |
+| Windows | One tab per view. A PWA gives you one window. | Any number of native windows. Each has its own Ignis workspace and is remembered between runs. |
+| Shortcuts | The browser handles some keys first: `Ctrl+P` prints, `Ctrl+F` opens the browser's find bar, `Ctrl+R` reloads. | Browser shortcuts are off. The page gets every key. |
+| Address bar and tabs | A browser always has them. A PWA hides them but a browser still owns the window. | None. |
+| Memory | Shared with every other tab and extension. | Not measured. The app runs only Ignis, with no extensions or other tabs. |
 
-## Features
+## Table of Contents
 
-- **Multiple native windows.** `Ctrl+Shift+N` or the tray menu opens another window on the same vault. Anything the page opens with `window.open` or `target=_blank` becomes a native window too.
-- **One workspace per window.** The first window loads `?vault=<vault>`. Every further window loads `?vault=<vault>&workspace=<id>`, so the windows do not overwrite each other's layout. Ignis syncs edits between windows within about a second.
-- **Links do the right thing.** A request for a new window that points at a note opens a native window on that note (`&file=<path>`). Links to other sites open in your system browser.
-- **Your keys, not the browser's.** Only `Ctrl+Shift+N` is handled by the app. Everything else goes to the page. On Windows the WebView2 accelerator keys are turned off (`AreBrowserAcceleratorKeysEnabled = false`).
-- **Remembers your windows.** Size, position and maximized state are stored per window, and the windows that were open when you quit come back on the next start.
-- **Shared data.** All windows use one webview data folder, so settings stored by the page (for example your plugin trust decision) apply to every window.
-- **Tray icon** with *New window*, *Change server address…* and *Quit*.
-- **Drag and drop** events are passed to the page, so Ignis's file upload by drop is not intercepted by the app.
+- [Background](#background)
+- [Install](#install)
+- [Usage](#usage)
+- [Requirements](#requirements)
+- [Limitations](#limitations)
+- [Building from source](#building-from-source)
+- [Contributing](#contributing)
+- [License](#license)
 
-## Install (Windows)
+## Background
+
+[Ignis](https://github.com/Nystik-gh/ignis) runs Obsidian on a server and serves it to a web browser. It supports several saved workspaces through the `?workspace=` URL parameter, opens notes directly through `?file=`, and keeps tabs in sync over a WebSocket. It has no pop-out windows.
+
+Ignis Desktop uses those URL parameters to give you several real windows on one vault:
+
+- The first window loads `?vault=<vault>`.
+- Every other window loads `?vault=<vault>&workspace=<id>`, so the windows do not overwrite each other's layout.
+- Edits made in one window show up in the others within about a second. That sync is Ignis's, not this app's.
+
+The app only loads the URL of a server you run. It contains no Ignis or Obsidian code.
+
+**Not affiliated with Ignis or Obsidian.** This is an independent project. "Obsidian" is a trademark of its owner and is used here only to describe what Ignis serves.
+
+## Install
+
+### Windows
 
 1. Download the latest `.msi` (or the `.exe` installer) from the [Releases](../../releases) page.
-2. Run it. The installers are not code-signed yet, so Windows SmartScreen may ask you to confirm ("More info", then "Run anyway").
+2. Run it. The installers are not code-signed yet, so Windows SmartScreen may ask you to confirm: choose "More info", then "Run anyway".
 3. Start **Ignis Desktop** from the Start menu.
 
-Ignis Desktop uses the Microsoft Edge WebView2 runtime, which is preinstalled on Windows 11 and on current Windows 10.
+The app uses the Microsoft Edge WebView2 runtime. It is preinstalled on Windows 11 and on current Windows 10.
 
-## First run
+### Linux
+
+There is no prebuilt Linux package yet. [Build it from source](#building-from-source).
+
+## Usage
+
+### First run
 
 The first start shows a small window.
 
@@ -47,7 +68,7 @@ The first start shows a small window.
 It asks for:
 
 - **Server address**, for example `https://ignis.example.ts.net`. If you leave out the scheme, `https://` is assumed.
-- **Vault** (optional), the vault name as it appears in Ignis's `?vault=` URL parameter. Leave it empty to pick a vault inside Ignis.
+- **Vault** (optional). Use the vault name from Ignis's `?vault=` URL parameter. Leave it empty to pick a vault inside Ignis.
 
 Press *Save and open*. The settings are stored in `config.json`:
 
@@ -58,42 +79,60 @@ Press *Save and open*. The settings are stored in `config.json`:
 
 To change the address later, use *Change server address…* in the tray menu. Open windows are pointed at the new server.
 
-## Shortcuts
+### Shortcuts
 
 | Shortcut | Action |
 | --- | --- |
-| `Ctrl+Shift+N` | New window (with its own workspace). Works while the Ignis page has focus. |
-| Anything else | Sent to the page, so it is whatever Obsidian binds it to. |
+| `Ctrl+Shift+N` | Open a new window with its own workspace. Works while the Ignis page has focus. |
+| Any other key | Sent to the page, so it does whatever Obsidian binds it to. |
 
-Closing a window forgets it; closing the last window quits the app (it does not stay in the tray). Use the tray's *Quit* to exit and have all currently open windows restored on the next start.
+On Windows, the WebView2 accelerator keys (`Ctrl+F`, `Ctrl+R`, `Ctrl+P`, `Ctrl+U`, `F5`, `F12` and similar) are switched off with `AreBrowserAcceleratorKeysEnabled = false`, so the page receives them.
 
-Each window id (`main`, `w2`, `w3`, ...) maps to a fixed Ignis workspace. A new window takes the lowest unused id, so a closed window's layout comes back when you open a new one. Ignis stores these layouts in the vault as `.obsidian/workspace.<id>.json`.
+### Windows
 
-## What your Ignis server needs
+- Open a new window with `Ctrl+Shift+N` or the tray menu.
+- A page that opens a window with `window.open` or `target=_blank` gets a new native window. If the request points at a note, that window opens the note (`&file=<path>`). Links to other sites open in your system browser.
+- All windows share one data folder, so settings the page stores in the browser (for example your plugin trust choice) apply to every window.
+- Size, position and maximized state are saved for each window. Windows that are still open when you quit from the tray come back on the next start.
+- Closing a window forgets it. Closing the last window quits the app. It does not stay in the tray.
+- Each window id (`main`, `w2`, `w3`, …) maps to one Ignis workspace. A new window takes the lowest unused id, so a closed window's layout comes back when you open a new one. Ignis stores the layouts in the vault as `.obsidian/workspace.<id>.json`.
 
-- **HTTPS.** Ignis has no authentication of its own and, outside a secure context, browsers (and WebView2) disable features it needs. `http://localhost` and `http://127.0.0.1` count as secure, so a server on the same machine works over plain HTTP; anything else should use HTTPS.
-- **Authentication in front of it.** Ignis does not provide any. [Tailscale](https://tailscale.com) is a convenient way to get HTTPS and a private network at once. On the machine that runs Ignis (listening on port 8080):
+### Tray menu
 
-  ```sh
-  tailscale serve --bg 8080
-  ```
+| Item | Action |
+| --- | --- |
+| New window | Open another window. |
+| Change server address… | Open the settings window. |
+| Quit | Save all windows and exit. |
 
-  Tailscale prints the resulting address, something like `https://ignis.example.ts.net`. Enter that in Ignis Desktop on any device in your tailnet.
-- If a login page or single sign-on sits in front of Ignis, it loads inside the window like any other page.
+## Requirements
+
+You need a running Ignis server that you can reach from the machine you install Ignis Desktop on.
+
+- **HTTPS.** Outside a secure context, browsers and WebView2 turn off features Ignis needs. `http://localhost` and `http://127.0.0.1` count as secure, so a server on the same machine works over plain HTTP. Anything else should use HTTPS.
+- **Authentication in front of Ignis.** Ignis has none. If a login page or single sign-on sits in front of it, that page loads in the window like any other.
+
+[Tailscale](https://tailscale.com) gives you HTTPS and a private network in one step. On the machine that runs Ignis, which listens on port 8080:
+
+```sh
+tailscale serve --bg 8080
+```
+
+Tailscale prints the resulting address, something like `https://ignis.example.ts.net`. Enter that address in Ignis Desktop on any device in your tailnet.
 
 ## Limitations
 
-- **Windows is the target.** The code builds and runs on Linux (that is how it is developed), but there is no Linux or macOS installer, and macOS is untested. On Linux, WebKitGTK's own shortcuts are not changed.
-- **Unsigned installers.** Expect a SmartScreen prompt.
-- **No Ignis pop-out windows.** Ignis opens notes as tabs and has no pop-out windows. Ignis Desktop gives you more windows, each with its own workspace, rather than moving a tab into a new window.
-- **`Ctrl+Shift+N` needs the page.** It is handled by a small script inside the page. If Ignis is not reachable and the window shows an error page, use the tray menu instead.
-- **Page-initiated navigation is not restricted.** A plain link to another site that is not opened as a new window navigates inside the window, which keeps login redirects working.
+- **Windows is the main target.** The app builds and runs on Linux, but there is no Linux package. macOS is untested. On Linux, WebKitGTK's own shortcuts are not changed.
+- **The installers are unsigned.** Expect a SmartScreen prompt.
+- **No pop-out windows.** Ignis opens notes as tabs and cannot move a tab into a new window. Ignis Desktop gives you more windows, each with its own workspace.
+- **`Ctrl+Shift+N` needs the page.** A small script inside the page handles it. If Ignis is unreachable and the window shows an error page, use the tray menu.
+- **Navigation is not restricted.** A plain link to another site that is not opened as a new window loads inside the window. This keeps login redirects working.
 - **No auto-update.** Download new versions from the Releases page.
-- **Everything that Ignis does not support still does not work**, such as plugins that need Node. See the [Ignis documentation](https://ignis.thiefling.com/docs/).
+- **Ignis limits still apply.** Plugins that need Node, for example, do not work. See the [Ignis documentation](https://ignis.thiefling.com/docs/).
 
-## Build from source
+## Building from source
 
-You need [Rust](https://rustup.rs) (stable), Node.js 22 and the [Tauri 2 prerequisites](https://tauri.app/start/prerequisites/) for your OS. On Debian/Ubuntu that means:
+You need [Rust](https://rustup.rs) (stable), Node.js 22 and the [Tauri 2 prerequisites](https://tauri.app/start/prerequisites/) for your OS. On Debian or Ubuntu:
 
 ```sh
 sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
@@ -104,27 +143,39 @@ Then:
 
 ```sh
 npm ci
-npm run tauri dev                    # run with a debug build
-npm run tauri build -- --bundles msi # Windows installer (needs WiX, fetched automatically)
-cargo test --manifest-path src-tauri/Cargo.toml   # unit tests
+npm run tauri dev                                  # run a debug build
+npm run tauri build -- --bundles msi               # Windows installer
+cargo test --manifest-path src-tauri/Cargo.toml    # unit tests
 ```
 
-Releases are built by GitHub Actions: pushing a tag such as `v0.1.0` runs [`release.yml`](.github/workflows/release.yml), which builds the Windows installers and attaches them to a draft release. The workflow can also be started by hand to get the installers as a build artifact.
+GitHub Actions builds the releases. Pushing a tag such as `v0.1.0` runs [`release.yml`](.github/workflows/release.yml), which builds the Windows installers and attaches them to a draft release. You can also start the workflow by hand to get the installers as a build artifact.
 
-### How it is put together
+### Checking keys on Windows
+
+[`scripts/windows-keytest.ps1`](scripts/windows-keytest.ps1) starts the release build against a local test page, sends `Ctrl+P`, `Ctrl+F`, `F5`, `Ctrl+R`, `Ctrl+U` and `Ctrl+Shift+N`, and reports which keys the page saw and whether the page reloaded. It needs an interactive Windows desktop.
+
+### Layout
 
 | Path | What it does |
 | --- | --- |
-| `src-tauri/src/urls.rs` | Server address normalising, window URL building, and deciding what a `window.open` request becomes. |
-| `src-tauri/src/config.rs` | `config.json` (server, vault, open windows and their geometry), window ids. |
-| `src-tauri/src/windows.rs` | Window creation, geometry tracking and restore, new-window handling, WebView2 shortcut setting. |
-| `src-tauri/src/main.rs` | App setup, tray menu, the two commands used by the settings page. |
+| `src-tauri/src/urls.rs` | Normalises the server address, builds window URLs and decides what a `window.open` request becomes. |
+| `src-tauri/src/config.rs` | Reads and writes `config.json`: server, vault, open windows and their geometry. |
+| `src-tauri/src/windows.rs` | Creates windows, tracks and restores geometry, handles new-window requests, sets the WebView2 shortcut option. |
+| `src-tauri/src/main.rs` | App setup, tray menu and the two commands used by the settings page. |
 | `ui/index.html` | The local first-run page. Ignis windows get no access to the app's IPC. |
+
+## Contributing
+
+Issues and pull requests are welcome. Before you open a pull request, run:
+
+```sh
+cargo fmt --manifest-path src-tauri/Cargo.toml
+cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+cargo test --manifest-path src-tauri/Cargo.toml
+```
+
+Please keep the unofficial notice and do not add Ignis or Obsidian code or assets.
 
 ## License
 
-[MIT](LICENSE). Ignis Desktop contains no Ignis or Obsidian code: it only loads the URL of a server you run yourself.
-
-## Unofficial
-
-Ignis Desktop is an independent project. It is not affiliated with, endorsed by, or sponsored by Ignis, its authors, or Obsidian / Dynalist Inc. "Obsidian" is a trademark of its owner and is mentioned here only to describe what Ignis serves.
+[MIT](LICENSE) © philaxis
