@@ -295,10 +295,11 @@ try {
         # screenX/screenY does not match it exactly in a window without a title bar.
         $mainRect = Window-Rect $mainWindow
         $dropPoints = @{
+            'tab header element' = (Element-Center $mainTarget '.workspace-tab-header-container-inner')
             'tab header'  = @{ x = $mainRect.Left + 300; y = $mainRect.Top + 25 }
             'page centre' = @{ x = [int](($mainRect.Left + $mainRect.Right) / 2); y = [int](($mainRect.Top + $mainRect.Bottom) / 2) }
         }
-        foreach ($dropSelector in 'tab header', 'page centre') {
+        foreach ($dropSelector in 'tab header element', 'tab header', 'page centre') {
             if ($merged) { break }
             if ((Get-PopoutTargets).Count -eq 0) { break }
             $from = Element-Center $popTarget '.workspace-tab-header'
