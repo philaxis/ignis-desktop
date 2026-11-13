@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press the app icon. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="new-window"
+        android:shortcutShortLabel="@string/shortcut_new_window">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="dev.philaxis.ignis.NewWindowActivity"
+            android:targetPackage="dev.philaxis.ignis" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="settings"
+        android:shortcutShortLabel="@string/shortcut_settings">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="dev.philaxis.ignis.SettingsActivity"
+            android:targetPackage="dev.philaxis.ignis" />
+    </shortcut>
+</shortcuts>

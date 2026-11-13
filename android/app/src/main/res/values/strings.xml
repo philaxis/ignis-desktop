@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ignis</string>
+    <string name="settings_lead">Connect to your self-hosted Ignis server.</string>
+    <string name="settings_server">Server address</string>
+    <string name="settings_vault">Vault (optional)</string>
+    <string name="settings_vault_hint">Leave empty to pick a vault inside Ignis.</string>
+    <string name="settings_save">Save and open</string>
+    <string name="shortcut_new_window">New window</string>
+    <string name="shortcut_settings">Server address</string>
+</resources>

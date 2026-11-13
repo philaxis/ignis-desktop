@@ -11,6 +11,10 @@ Ignis Desktop is a real desktop app, not a browser tab. It opens your [Ignis](ht
 
 ![A note popped out of an Ignis Desktop window on Windows. The line "typed in the pop-out" was typed in the pop-out.](docs/screenshots/popout-windows.png)
 
+There is also an **Android tablet app**, [Ignis](#android-tablet), with the same idea for touch: no browser around Obsidian, Obsidian's own tablet layout on any screen size, and two windows side by side in split screen, each with its own workspace.
+
+![Two windows of the Android app side by side in split screen on a tablet, each with its own tabs. The left one has Obsidian's editing toolbar open.](docs/screenshots/android-split.png)
+
 How it compares with using Ignis in a browser:
 
 | | Browser tab or PWA | Ignis Desktop |
@@ -59,6 +63,12 @@ The app uses the Microsoft Edge WebView2 runtime. It is preinstalled on Windows 
 ### Linux
 
 There is no prebuilt Linux package yet. [Build it from source](#building-from-source).
+
+### Android tablet
+
+There is no prebuilt APK yet. [Build it from source](#building-the-android-app), copy the APK to the tablet, open it and allow installing from that source when Android asks. Then start **Ignis** and enter the server address and vault.
+
+It needs Android 10 or later and an up-to-date Android System WebView.
 
 ## Usage
 
@@ -117,6 +127,17 @@ On Windows, the WebView2 accelerator keys (`Ctrl+F`, `Ctrl+R`, `Ctrl+P`, `Ctrl+U
 | Use system title bar | Checked: windows opened from now on have the operating system's title bar instead of Obsidian's tab header. Off by default. |
 | Quit | Save all windows and exit. |
 
+### Android tablet
+
+The Android app shows Obsidian's own tablet layout, the one Obsidian's Android app uses: the sidebars open as drawers (tap the sidebar button or swipe across the note), menus open with a long press, and while you type an editing toolbar sits above the keyboard. Ignis on its own shows this layout only on screens narrower than 600 pixels; the app keeps it on a tablet.
+
+- **Back** closes the open menu, drawer or dialog first, then goes back in the note's history, then leaves the app.
+- **Two windows side by side.** Run *Open a new window* from the command palette (or press `Ctrl+Shift+N` on a keyboard), or long-press the app icon and choose *New window*. On a large screen the new window opens next to the current one in split screen. You can also use Android's own split screen and taskbar.
+- **Each window has its own workspace**, `tablet`, `tablet-2`, …, so the windows do not overwrite each other's tabs. A new window takes the lowest free one, so a closed window's tabs come back in the next window you open. Obsidian keeps a tablet layout in `.obsidian/workspace-mobile.<id>.json`; desktop windows and phones that use Ignis in a browser keep theirs.
+- **Server address.** Long-press the app icon and choose *Server address*, or use the button on the page shown while the server cannot be reached. A link `dev.philaxis.ignis://settings?server=<address>&vault=<vault>` opens the same screen with the fields filled in.
+- Rotating the tablet or resizing a split-screen window does not reload Obsidian.
+- Links to other sites open in the browser. Plugins that record audio may use the microphone; Android asks once.
+
 ## Requirements
 
 You need a running Ignis server that you can reach from the machine you install Ignis Desktop on.
@@ -145,6 +166,9 @@ Tailscale prints the resulting address, something like `https://ignis.example.ts
 - **Navigation is not restricted.** A plain link to another site that is not opened as a new window loads inside the window. This keeps login redirects working.
 - **No auto-update.** Download new versions from the Releases page.
 - **Ignis limits still apply.** Plugins that need Node, for example, do not work. See the [Ignis documentation](https://ignis.thiefling.com/docs/).
+- **Android: the tablet layout and the per-window workspaces rely on Ignis internals.** The app keeps the `EmulateMobile` flag that Ignis 0.9 removes on wide screens, and redirects Obsidian's `workspace-mobile.json` per window. A later Ignis or Obsidian version that changes either may show the desktop layout or share one layout between windows.
+- **Android: no pop-outs.** Obsidian's tablet layout has none; use a second window instead.
+- **Android: the edge of the screen belongs to Android.** With gesture navigation a swipe that starts at the very edge is Android's Back gesture. Start the swipe that opens a drawer a little further in.
 
 ## Building from source
 
@@ -165,6 +189,18 @@ cargo test --manifest-path src-tauri/Cargo.toml    # unit tests
 ```
 
 GitHub Actions builds the releases. Pushing a tag such as `v0.1.0` runs [`release.yml`](.github/workflows/release.yml), which builds the Windows installers and attaches them to a draft release. You can also start the workflow by hand to get the installers as a build artifact.
+
+### Building the Android app
+
+The Android app is a small Kotlin app in [`android/`](android). It does not use Tauri: it is one WebView per window, and Android's own tasks give it several windows. You need JDK 17 or later and the Android SDK (platform 35).
+
+```sh
+cd android
+./gradlew testDebugUnitTest    # unit tests
+./gradlew assembleDebug        # app/build/outputs/apk/debug/app-debug.apk
+```
+
+`./gradlew assembleRelease` signs the release APK when `IGNIS_ANDROID_KEYSTORE`, `IGNIS_ANDROID_KEYSTORE_PASSWORD`, `IGNIS_ANDROID_KEY_ALIAS` and `IGNIS_ANDROID_KEY_PASSWORD` are set; otherwise it leaves it unsigned. Keep the same key for every build, or Android refuses to update the installed app.
 
 ### Checking keys on Windows
 
@@ -192,6 +228,10 @@ GitHub Actions builds the releases. Pushing a tag such as `v0.1.0` runs [`releas
 | `src-tauri/src/main.rs` | App setup, tray menu and the commands used by the settings page. |
 | `ui/index.html` | The local first-run page. |
 | `ui/connect.html` | The page every window starts on. It waits for the server to answer, then opens it. |
+| `android/app/src/main/java/dev/philaxis/ignis/MainActivity.kt` | Android: one window. The WebView, the start script, new-window requests, file picking, the microphone and Back. |
+| `android/app/src/main/java/dev/philaxis/ignis/Urls.kt`, `WindowIds.kt` | Android: the same URL rules as `urls.rs`, and the workspace id of each window. |
+| `android/app/src/main/java/dev/philaxis/ignis/SettingsActivity.kt` | Android: the server-address screen. |
+| `android/app/src/main/assets/tablet.js` | Android, page side: keeps Obsidian's tablet layout, gives each window its own `workspace-mobile` file, and adds *Open a new window*. Runs before Ignis's own scripts. |
 
 ## Contributing
 

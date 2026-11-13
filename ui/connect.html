@@ -27,6 +27,7 @@
     <p id="host"></p>
     <p id="hint"></p>
     <button id="retry" hidden>Try again now</button>
+    <button id="settings" hidden>Change server address</button>
   </main>
   <script>
     // Shown while the Ignis server does not answer. Once it does, the window
@@ -34,6 +35,9 @@
     // controls when the server is down.
     const RETRY_MS = 3000;
     const TIMEOUT_MS = 8000;
+    // The Android app has no tray menu; it offers a button instead.
+    const androidApp = window.IgnisApp;
+    const changeHint = androidApp ? '' : ' Use the tray menu to change the server address.';
 
     const params = new URLSearchParams(location.search);
     let target;
@@ -76,9 +80,15 @@
         return;
       }
       status.textContent = 'Cannot reach the server';
-      hint.textContent = 'Trying again every few seconds. Use the tray menu to change the server address.';
+      hint.textContent = 'Trying again every few seconds.' + changeHint;
       retry.hidden = false;
       timer = setTimeout(attempt, RETRY_MS);
+    }
+
+    if (androidApp) {
+      const settings = document.getElementById('settings');
+      settings.hidden = false;
+      settings.addEventListener('click', () => androidApp.openSettings());
     }
 
     if (target) {
@@ -87,7 +97,7 @@
       attempt();
     } else {
       status.textContent = 'No server address';
-      hint.textContent = 'Use the tray menu to set the server address.';
+      hint.textContent = androidApp ? '' : 'Use the tray menu to set the server address.';
     }
   </script>
 </body>
