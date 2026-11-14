@@ -3,8 +3,12 @@
     <string name="app_name">Ignis</string>
     <string name="settings_lead">Connect to your self-hosted Ignis server.</string>
     <string name="settings_server">Server address</string>
-    <string name="settings_vault">Vault (optional)</string>
-    <string name="settings_vault_hint">Leave empty to pick a vault inside Ignis.</string>
+    <string name="settings_vault">Vault</string>
+    <string name="settings_vault_need_server">Enter the server address to see its vaults.</string>
+    <string name="settings_vault_loading">Loading the server\'s vaults…</string>
+    <string name="settings_vault_failed">Could not load the vaults: %1$s</string>
+    <string name="settings_vault_none">The server has no vaults.</string>
+    <string name="settings_vault_pick">Pick a vault.</string>
     <string name="settings_save">Save and open</string>
     <string name="shortcut_new_window">New window</string>
     <string name="shortcut_settings">Server address</string>
